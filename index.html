@@ -8,37 +8,27 @@
       body { font-family: sans-serif; background-color: #f0f2f5; padding: 10px; margin: 0; color: #333; }
       .container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 450px; margin: auto; box-sizing: border-box; }
       h2 { color: #1a73e8; text-align: center; font-size: 20px; margin-top: 0; }
-      
       .top-section { background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
       .input-group { margin-bottom: 10px; }
       label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
       .main-input { padding: 12px; width: 100%; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-      
       .shift-card { background: #f9f9f9; border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 12px; position: relative; }
       .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-      
       .day-wrap { display: flex; align-items: center; gap: 5px; }
       .day-select { font-size: 16px; font-weight: bold; padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 70px; }
       .yobi-label { font-size: 15px; font-weight: bold; min-width: 45px; }
       .yobi-sat { color: #1a73e8; } .yobi-sun { color: #d93025; }
-
       .card-controls { display: flex; gap: 10px; align-items: center; }
       .ctrl-btn { cursor: pointer; font-size: 14px; background: #eee; padding: 2px 6px; border-radius: 4px; border: 1px solid #ccc; user-select: none; }
       .copy-btn { color: #1a73e8; font-weight: bold; }
       .remove-btn { color: #666; text-decoration: underline; font-size: 12px; }
-
       .holiday-label { display: flex; align-items: center; gap: 4px; font-size: 14px; color: #d93025; font-weight: bold; cursor: pointer; margin: 8px 0; }
-      .holiday-checkbox { width: 18px; height: 18px; }
-
       .time-row { display: flex; align-items: center; gap: 4px; font-size: 15px; }
       .time-row.disabled { opacity: 0.3; pointer-events: none; }
       select { padding: 8px 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; background: white; }
-      
       .comment-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-top: 10px; }
-      
       .add-btn { width: 100%; padding: 12px; background: #34a853; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
       .submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; }
-
       #result-screen { display: none; }
       .confirm-item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; line-height: 1.5; }
     </style>
@@ -46,7 +36,6 @@
   <body>
     <div class="container" id="main-form">
       <h2>シフト希望提出</h2>
-      
       <div class="top-section">
         <div class="input-group">
           <label>【対象月】</label>
@@ -57,7 +46,6 @@
           <input type="text" id="user_name" class="main-input" placeholder="氏名を入力">
         </div>
       </div>
-
       <div id="input-list"></div>
       <button type="button" class="add-btn" onclick="addDay()">＋ 新しい希望日を追加</button>
       <button onclick="submitAll()" class="submit-btn" id="sub-btn">一括送信する</button>
@@ -75,7 +63,7 @@
 
     <script>
       let rowCount = 0;
-      const gasUrl = 'https://script.google.com/macros/s/AKfycbxHW5dIg_4LCaSlyAMgm3RmWZb_vb7YP0yMKfHFlo37R9bGQb8VzFTpu5kCOcaCdHFzQQ/exec'; // ★書き換えを忘れずに
+      const gasUrl = 'https://script.google.com/macros/s/AKfycbxI4HFvgvpICkxIbw6B1bgPq2XfkkmcrHvg_O2vBMbkpnPYf6BxatAu9hOsJ20ILcrjjA/exec';
       const PASS_KEY = "shop777"; 
 
       function setupMonth() {
@@ -138,10 +126,8 @@
         const div = document.createElement('div');
         div.className = 'shift-card';
         div.id = `row_${rowCount}`;
-        
         let days = '';
         for(let d=1; d<=31; d++) days += `<option value="${d}" ${data && data.day == d ? 'selected' : ''}>${d}日</option>`;
-        
         div.innerHTML = `
           <div class="card-header">
             <div class="day-wrap">
@@ -186,28 +172,39 @@
         const name = document.getElementById('user_name').value;
         const monthTxt = document.getElementById('target_month').selectedOptions[0].innerText;
         if (!name) { alert('名前を入力してください'); return; }
-        
         const cards = document.querySelectorAll('.shift-card');
+        if (cards.length === 0) { alert('希望日を追加してください'); return; }
+
         const subBtn = document.getElementById('sub-btn');
         subBtn.innerText = "送信中..."; subBtn.disabled = true;
 
         const allData = [];
         cards.forEach(card => {
           const id = card.id.replace('row_', '');
-          const dStr = document.getElementById(`day_${id}`).value + '日' + document.getElementById(`yobi_display_${id}`).innerText;
+          const dNum = parseInt(document.getElementById(`day_${id}`).value);
+          const yobiTxt = document.getElementById(`yobi_display_${id}`).innerText;
           const isHoliday = document.getElementById(`holiday_${id}`).checked;
-          const start = isHoliday ? "休み" : document.getElementById(`start_h_${id}`).value + ':' + document.getElementById(`start_m_${id}`).value;
-          const end = isHoliday ? "休み" : document.getElementById(`end_h_${id}`).value + ':' + document.getElementById(`end_m_${id}`).value;
-          allData.push({ name: name + ` (${monthTxt})`, day: dStr, start: start, end: end, comment: document.getElementById(`cm_${id}`).value });
+          let start, end;
+          if (isHoliday) { start = "休み"; end = "休み"; }
+          else {
+            start = document.getElementById(`start_h_${id}`).value + ':' + document.getElementById(`start_m_${id}`).value;
+            end = document.getElementById(`end_h_${id}`).value + ':' + document.getElementById(`end_m_${id}`).value;
+          }
+          allData.push({ dayNum: dNum, dayStr: dNum + '日' + yobiTxt, start: start, end: end, comment: document.getElementById(`cm_${id}`).value });
         });
 
+        // 送信前に日付順でソート
+        allData.sort((a, b) => a.dayNum - b.dayNum);
+
         try {
-          await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ key: PASS_KEY, bulk: allData }) });
+          const payload = allData.map(i => ({ name: name + ` (${monthTxt})`, day: i.dayStr, start: i.start, end: i.end, comment: i.comment }));
+          await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ key: PASS_KEY, bulk: payload }) });
           document.getElementById('res-month-name').innerText = monthTxt;
           document.getElementById('res-name').innerText = "氏名：" + name;
-          document.getElementById('res-list').innerHTML = allData.map(i => `<div class="confirm-item"><b>${i.day}</b>：<span style="${i.start==='休み'?'color:red':''}">${i.start==='休み'?'休み':i.start+'～'+i.end}</span><br><small>${i.comment?'備考: '+i.comment:''}</small></div>`).join('');
+          document.getElementById('res-list').innerHTML = allData.map(i => `<div class="confirm-item"><b>${i.dayStr}</b>：<span style="${i.start==='休み'?'color:red':''}">${i.start==='休み'?'休み':i.start+'～'+i.end}</span><br><small>${i.comment?'備考: '+i.comment:''}</small></div>`).join('');
           document.getElementById('main-form').style.display = 'none';
           document.getElementById('result-screen').style.display = 'block';
+          window.scrollTo(0,0);
         } catch (err) { alert('送信エラー'); subBtn.disabled = false; }
       }
     </script>
