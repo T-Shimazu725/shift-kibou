@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>シフト希望提出</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: sans-serif; background-color: #f0f2f5; padding: 15px; margin: 0; }
+      .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+      h2 { color: #1a73e8; text-align: center; }
+      .name-section { margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+      .name-input { padding: 12px; width: 100%; border: 2px solid #1a73e8; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+      .shift-card { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; position: relative; }
+      .day-select { font-size: 18px; font-weight: bold; margin-bottom: 10px; padding: 5px; width: 85px; }
+      .time-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 16px; margin-bottom: 10px; }
+      .comment-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-top: 5px; }
+      select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; background: white; }
+      .add-btn { width: 100%; padding: 12px; background: #34a853; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+      .submit-btn { width: 100%; padding: 18px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+      .remove-btn { position: absolute; top: 10px; right: 10px; color: #d93025; cursor: pointer; font-size: 12px; border: 1px solid #d93025; padding: 2px 5px; border-radius: 4px; }
+      #result-screen { display: none; }
+      .confirm-item { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="main-form">
+      <h2>シフト希望提出</h2>
+      <div class="name-section">
+        <label style="font-weight: bold;">氏名</label>
+        <input type="text" id="user_name" class="name-input" placeholder="名前を入力">
+      </div>
+      <div id="input-list"></div>
+      <button type="button" class="add-btn" onclick="addDay()">＋ 希望日を追加</button>
+      <button onclick="submitAll()" class="submit-btn" id="sub-btn">一括送信する</button>
+    </div>
+
+    <div class="container" id="result-screen">
+      <h2 style="color: #34a853;">✅ 送信完了しました</h2>
+      <p style="font-size: 14px; color: #666; text-align: center;">以下の内容で受付ました。<br><b>この画面をスクショして保存してください。</b></p>
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">
+        <p id="res-name" style="font-weight: bold; margin-top: 0;"></p>
+        <div id="res-list"></div>
+      </div>
+      <button onclick="location.reload()" style="width:100%; padding:12px; margin-top: 20px; background: #666; color: white; border: none; border-radius: 6px;">別の人の分を入力する</button>
+    </div>
+
+    <script>
+      let rowCount = 0;
+      // ★ここに最新のデプロイURLを貼り付けてください
+      const gasUrl = 'https://script.google.com/macros/s/AKfycbyb_ytrOgy8U2GMvzj0pfRN1d99zz7sfiW9Z7AduVJin0M0iim64UcbDdaQ4sk_IEb_jg/exec';
+      const PASS_KEY = "4649"; // ★GAS側のSECRET_KEYと同じものにする
+
+      function genHrs() {
+        let h = '';
+        for (let i = 10; i <= 25; i++) {
+          let displayH = i >= 24 ? `翌${i - 24}` : i;
+          h += `<option value="${i.toString().padStart(2, '0')}">${displayH}時</option>`;
+        }
+        return h;
+      }
+      function genMins() {
+        return ['00','15','30','45'].map(m => `<option value="${m}">${m}分</option>`).join('');
+      }
+
+      function addDay() {
+        rowCount++;
+        const div = document.createElement('div');
+        div.className = 'shift-card';
+        div.id = `row_${rowCount}`;
+        let days = '';
+        for(let d=1; d<=31; d++) days += `<option value="${d}">${d}日</option>`;
+        div.innerHTML = `
+          <span class="remove-btn" onclick="document.getElementById('row_${rowCount}').remove()">削除</span>
+          <select class="day-select" id="day_${rowCount}">${days}</select>
+          <div class="time-row">
+            <select id="sh_${rowCount}">${genHrs()}</select>:<select id="sm_${rowCount}">${genMins()}</select>
+            ～
+            <select id="eh_${rowCount}">${genHrs()}</select>:<select id="em_${rowCount}">${genMins()}</select>
+          </div>
+          <input type="text" class="comment-input" id="cm_${rowCount}" placeholder="備考（あれば）">
+        `;
+        document.getElementById('input-list').appendChild(div);
+      }
+
+      window.onload = addDay;
+
+      async function submitAll() {
+        const name = document.getElementById('user_name').value;
+        if (!name) { alert('名前を入力してください'); return; }
+        const cards = document.querySelectorAll('.shift-card');
+        if (cards.length === 0) { alert('希望日を追加してください'); return; }
+
+        const subBtn = document.getElementById('sub-btn');
+        subBtn.innerText = "送信中...";
+        subBtn.disabled = true;
+
+        const allData = [];
+        let listHtml = '';
+
+        cards.forEach(card => {
+          const id = card.id.replace('row_', '');
+          const d = document.getElementById(`day_${id}`).value + '日';
+          const s = document.getElementById(`sh_${id}`).value + ':' + document.getElementById(`sm_${id}`).value;
+          const e = document.getElementById(`eh_${id}`).value + ':' + document.getElementById(`em_${id}`).value;
+          const c = document.getElementById(`cm_${id}`).value;
+          
+          allData.push({ name: name, day: d, start: s, end: e, comment: c });
+          listHtml += `<div class="confirm-item"><b>${d}</b>： ${s} ～ ${e}<br><small>${c ? '備考: '+c : ''}</small></div>`;
+        });
+
+        try {
+          // key（合言葉）を一緒に送る
+          await fetch(gasUrl, { 
+            method: 'POST', 
+            mode: 'no-cors', 
+            body: JSON.stringify({ key: PASS_KEY, bulk: allData }) 
+          });
+          
+          document.getElementById('res-name').innerText = "氏名：" + name;
+          document.getElementById('res-list').innerHTML = listHtml;
+          document.getElementById('main-form').style.display = 'none';
+          document.getElementById('result-screen').style.display = 'block';
+          window.scrollTo(0,0);
+        } catch (err) {
+          alert('送信エラーが発生しました');
+          subBtn.disabled = false;
+        }
+      }
+    </script>
+  </body>
+</html>
