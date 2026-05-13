@@ -22,10 +22,15 @@
       .yobi-label { font-size: 15px; font-weight: bold; min-width: 45px; }
       .yobi-sat { color: #1a73e8; } .yobi-sun { color: #d93025; }
 
-      .holiday-label { display: flex; align-items: center; gap: 4px; font-size: 14px; color: #d93025; font-weight: bold; cursor: pointer; }
+      .card-controls { display: flex; gap: 10px; align-items: center; }
+      .ctrl-btn { cursor: pointer; font-size: 14px; background: #eee; padding: 2px 6px; border-radius: 4px; border: 1px solid #ccc; user-select: none; }
+      .copy-btn { color: #1a73e8; font-weight: bold; }
+      .remove-btn { color: #666; text-decoration: underline; font-size: 12px; }
+
+      .holiday-label { display: flex; align-items: center; gap: 4px; font-size: 14px; color: #d93025; font-weight: bold; cursor: pointer; margin: 8px 0; }
       .holiday-checkbox { width: 18px; height: 18px; }
 
-      .time-row { display: flex; align-items: center; gap: 4px; font-size: 15px; margin-top: 5px; }
+      .time-row { display: flex; align-items: center; gap: 4px; font-size: 15px; }
       .time-row.disabled { opacity: 0.3; pointer-events: none; }
       select { padding: 8px 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; background: white; }
       
@@ -33,7 +38,6 @@
       
       .add-btn { width: 100%; padding: 12px; background: #34a853; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
       .submit-btn { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 17px; font-weight: bold; cursor: pointer; }
-      .remove-btn { color: #666; cursor: pointer; font-size: 12px; text-decoration: underline; }
 
       #result-screen { display: none; }
       .confirm-item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; line-height: 1.5; }
@@ -46,9 +50,7 @@
       <div class="top-section">
         <div class="input-group">
           <label>【対象月】</label>
-          <select id="target_month" class="main-input" onchange="updateAllYobi()">
-            <!-- JavaScriptで今月と来月を自動生成 -->
-          </select>
+          <select id="target_month" class="main-input" onchange="updateAllYobi()"></select>
         </div>
         <div class="input-group">
           <label>【氏名】</label>
@@ -57,7 +59,7 @@
       </div>
 
       <div id="input-list"></div>
-      <button type="button" class="add-btn" onclick="addDay()">＋ 希望日を追加</button>
+      <button type="button" class="add-btn" onclick="addDay()">＋ 新しい希望日を追加</button>
       <button onclick="submitAll()" class="submit-btn" id="sub-btn">一括送信する</button>
     </div>
 
@@ -68,26 +70,24 @@
         <p id="res-name" style="font-weight: bold; margin: 0 0 10px 0;"></p>
         <div id="res-list" style="max-height: 300px; overflow-y: auto;"></div>
       </div>
-      <button onclick="location.reload()" style="width:100%; padding:12px; margin-top: 15px; background: #666; color: white; border: none; border-radius: 6px;">追加入力</button>
+      <button onclick="location.reload()" style="width:100%; padding:12px; margin-top: 15px; background: #666; color: white; border: none; border-radius: 6px;">別の人の分を入力</button>
     </div>
 
     <script>
       let rowCount = 0;
-      const gasUrl = 'https://script.google.com/macros/s/AKfycbxHW5dIg_4LCaSlyAMgm3RmWZb_vb7YP0yMKfHFlo37R9bGQb8VzFTpu5kCOcaCdHFzQQ/exec';
+      const gasUrl = 'https://script.google.com/macros/s/AKfycbxHW5dIg_4LCaSlyAMgm3RmWZb_vb7YP0yMKfHFlo37R9bGQb8VzFTpu5kCOcaCdHFzQQ/exec'; // ★書き換えを忘れずに
       const PASS_KEY = "shop777"; 
 
-      // 月の選択肢を生成（今月と来月）
       function setupMonth() {
         const now = new Date();
         const sel = document.getElementById('target_month');
         for(let i=0; i<2; i++) {
           let d = new Date(now.getFullYear(), now.getMonth() + i, 1);
           let m = (d.getMonth() + 1);
-          let y = d.getFullYear();
           let opt = document.createElement('option');
-          opt.value = `${y}/${m}`;
-          opt.innerText = `${y}年 ${m}月分`;
-          if(i===1) opt.selected = true; // デフォルトで来月を選択
+          opt.value = `${d.getFullYear()}/${m}`;
+          opt.innerText = `${d.getFullYear()}年 ${m}月分`;
+          if(i===1) opt.selected = true;
           sel.appendChild(opt);
         }
       }
@@ -98,9 +98,7 @@
         const date = new Date(y, m-1, day);
         const yobis = ['日','月','火','水','木','金','土'];
         const yobi = yobis[date.getDay()];
-        let cls = '';
-        if(date.getDay() === 0) cls = 'yobi-sun';
-        if(date.getDay() === 6) cls = 'yobi-sat';
+        let cls = date.getDay() === 0 ? 'yobi-sun' : (date.getDay() === 6 ? 'yobi-sat' : '');
         return `<span class="yobi-label ${cls}">(${yobi})</span>`;
       }
 
@@ -110,41 +108,39 @@
       }
 
       function updateAllYobi() {
-        const selects = document.querySelectorAll('.day-select');
-        selects.forEach(s => {
-          const id = s.id.replace('day_', '');
-          updateYobi(id);
-        });
+        document.querySelectorAll('.day-select').forEach(s => updateYobi(s.id.replace('day_', '')));
       }
 
-      function genHrs(id, type) {
-        let h = '';
-        for (let i = 10; i <= 25; i++) {
-          let val = i.toString().padStart(2, '0');
-          let displayH = i >= 24 ? `翌${i - 24}` : i;
-          h += `<option value="${val}">${displayH}時</option>`;
+      function moveRow(id, direction) {
+        const card = document.getElementById(`row_${id}`);
+        if (direction === 'up' && card.previousElementSibling) {
+          card.parentNode.insertBefore(card, card.previousElementSibling);
+        } else if (direction === 'down' && card.nextElementSibling) {
+          card.parentNode.insertBefore(card.nextElementSibling, card);
         }
-        return `<select id="${type}_h_${id}">${h}</select>`;
       }
 
-      function genMins(id, type) {
-        let m = '';
-        ['00','15','30','45'].forEach(v => m += `<option value="${v}">${v}分</option>`);
-        return `<select id="${type}_m_${id}">${m}</select>`;
+      function copyRow(id) {
+        const sourceData = {
+          day: document.getElementById(`day_${id}`).value,
+          holiday: document.getElementById(`holiday_${id}`).checked,
+          sh: document.getElementById(`start_h_${id}`).value,
+          sm: document.getElementById(`start_m_${id}`).value,
+          eh: document.getElementById(`end_h_${id}`).value,
+          em: document.getElementById(`end_m_${id}`).value,
+          cm: document.getElementById(`cm_${id}`).value
+        };
+        addDay(sourceData);
       }
 
-      function toggleHoliday(id) {
-        const isHoliday = document.getElementById(`holiday_${id}`).checked;
-        document.getElementById(`time_row_${id}`).classList.toggle('disabled', isHoliday);
-      }
-
-      function addDay() {
+      function addDay(data = null) {
         rowCount++;
         const div = document.createElement('div');
         div.className = 'shift-card';
         div.id = `row_${rowCount}`;
+        
         let days = '';
-        for(let d=1; d<=31; d++) days += `<option value="${d}">${d}日</option>`;
+        for(let d=1; d<=31; d++) days += `<option value="${d}" ${data && data.day == d ? 'selected' : ''}>${d}日</option>`;
         
         div.innerHTML = `
           <div class="card-header">
@@ -152,20 +148,36 @@
               <select class="day-select" id="day_${rowCount}" onchange="updateYobi(${rowCount})">${days}</select>
               <span id="yobi_display_${rowCount}"></span>
             </div>
-            <label class="holiday-label">
-              <input type="checkbox" class="holiday-checkbox" id="holiday_${rowCount}" onchange="toggleHoliday(${rowCount})"> 休み
-            </label>
-            <span class="remove-btn" onclick="document.getElementById('row_${rowCount}').remove()">削除</span>
+            <div class="card-controls">
+              <span class="ctrl-btn" onclick="moveRow(${rowCount}, 'up')">↑</span>
+              <span class="ctrl-btn" onclick="moveRow(${rowCount}, 'down')">↓</span>
+              <span class="ctrl-btn copy-btn" onclick="copyRow(${rowCount})">コピー</span>
+              <span class="remove-btn" onclick="document.getElementById('row_${rowCount}').remove()">削除</span>
+            </div>
           </div>
-          <div class="time-row" id="time_row_${rowCount}">
-            ${genHrs(rowCount, 'start')}:${genMins(rowCount, 'start')}
+          <label class="holiday-label">
+            <input type="checkbox" class="holiday-checkbox" id="holiday_${rowCount}" onchange="document.getElementById('time_row_${rowCount}').classList.toggle('disabled', this.checked)" ${data && data.holiday ? 'checked' : ''}> 休み希望
+          </label>
+          <div class="time-row ${data && data.holiday ? 'disabled' : ''}" id="time_row_${rowCount}">
+            ${genTimeSelect(rowCount, 'start', data ? data.sh : '10', data ? data.sm : '00')}
             <span>～</span>
-            ${genHrs(rowCount, 'end')}:${genMins(rowCount, 'end')}
+            ${genTimeSelect(rowCount, 'end', data ? data.eh : '19', data ? data.em : '00')}
           </div>
-          <input type="text" class="comment-input" id="cm_${rowCount}" placeholder="備考（あれば）">
+          <input type="text" class="comment-input" id="cm_${rowCount}" placeholder="備考（あれば）" value="${data ? data.cm : ''}">
         `;
         document.getElementById('input-list').appendChild(div);
         updateYobi(rowCount);
+      }
+
+      function genTimeSelect(id, type, defH, defM) {
+        let h = '';
+        for (let i = 10; i <= 25; i++) {
+          let val = i.toString().padStart(2, '0');
+          h += `<option value="${val}" ${val == defH ? 'selected' : ''}>${i >= 24 ? '翌'+(i-24) : i}時</option>`;
+        }
+        let m = '';
+        ['00','15','30','45'].forEach(v => m += `<option value="${v}" ${v == defM ? 'selected' : ''}>${v}分</option>`);
+        return `<select id="${type}_h_${id}">${h}</select>:<select id="${type}_m_${id}">${m}</select>`;
       }
 
       window.onload = () => { setupMonth(); addDay(); };
@@ -182,50 +194,21 @@
         const allData = [];
         cards.forEach(card => {
           const id = card.id.replace('row_', '');
-          const dNum = parseInt(document.getElementById(`day_${id}`).value);
-          const yobiTxt = document.getElementById(`yobi_display_${id}`).innerText;
+          const dStr = document.getElementById(`day_${id}`).value + '日' + document.getElementById(`yobi_display_${id}`).innerText;
           const isHoliday = document.getElementById(`holiday_${id}`).checked;
-          const c = document.getElementById(`cm_${id}`).value;
-          
-          let start, end;
-          if (isHoliday) { start = "休み"; end = "休み"; }
-          else {
-            start = document.getElementById(`start_h_${id}`).value + ':' + document.getElementById(`start_m_${id}`).value;
-            end = document.getElementById(`end_h_${id}`).value + ':' + document.getElementById(`end_m_${id}`).value;
-          }
-          allData.push({ name: name, dayNum: dNum, dayStr: dNum + '日' + yobiTxt, start: start, end: end, comment: c });
-        });
-
-        allData.sort((a, b) => a.dayNum - b.dayNum);
-
-        let listHtml = '';
-        allData.forEach(item => {
-          const style = item.start === "休み" ? 'color:red' : '';
-          const timeText = item.start === "休み" ? '休み' : `${item.start}～${item.end}`;
-          listHtml += `<div class="confirm-item"><b>${item.dayStr}</b>：<span style="${style}">${timeText}</span><br><small>${item.comment ? '備考: '+item.comment : ''}</small></div>`;
+          const start = isHoliday ? "休み" : document.getElementById(`start_h_${id}`).value + ':' + document.getElementById(`start_m_${id}`).value;
+          const end = isHoliday ? "休み" : document.getElementById(`end_h_${id}`).value + ':' + document.getElementById(`end_m_${id}`).value;
+          allData.push({ name: name + ` (${monthTxt})`, day: dStr, start: start, end: end, comment: document.getElementById(`cm_${id}`).value });
         });
 
         try {
-          // スプレッドシートには「氏名」の後に「◯月分」という情報を追加して送ります
-          const payload = allData.map(i => ({ 
-            name: i.name + ` (${monthTxt})`, 
-            day: i.dayStr, 
-            start: i.start, 
-            end: i.end, 
-            comment: i.comment 
-          }));
-          
-          await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ key: PASS_KEY, bulk: payload }) });
-          
+          await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ key: PASS_KEY, bulk: allData }) });
           document.getElementById('res-month-name').innerText = monthTxt;
           document.getElementById('res-name').innerText = "氏名：" + name;
-          document.getElementById('res-list').innerHTML = listHtml;
+          document.getElementById('res-list').innerHTML = allData.map(i => `<div class="confirm-item"><b>${i.day}</b>：<span style="${i.start==='休み'?'color:red':''}">${i.start==='休み'?'休み':i.start+'～'+i.end}</span><br><small>${i.comment?'備考: '+i.comment:''}</small></div>`).join('');
           document.getElementById('main-form').style.display = 'none';
           document.getElementById('result-screen').style.display = 'block';
-          window.scrollTo(0,0);
-        } catch (err) {
-          alert('送信エラー'); subBtn.disabled = false;
-        }
+        } catch (err) { alert('送信エラー'); subBtn.disabled = false; }
       }
     </script>
   </body>
