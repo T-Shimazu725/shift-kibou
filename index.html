@@ -48,15 +48,15 @@
       <h2 style="color: #34a853;">✅ 送信完了</h2>
       <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
         <p id="res-name" style="font-weight: bold; margin: 0 0 10px 0;"></p>
-        <div id="res-list"></div>
+        <div id="res-list" style="max-height: 300px; overflow-y: auto;"></div>
       </div>
-      <button onclick="location.reload()" style="width:100%; padding:12px; margin-top: 15px; background: #666; color: white; border: none; border-radius: 6px;">追加入力</button>
+      <button onclick="location.reload()" style="width:100%; padding:12px; margin-top: 15px; background: #666; color: white; border: none; border-radius: 6px;">別の人の分を入力</button>
     </div>
 
     <script>
       let rowCount = 0;
       // ★ここに最新のデプロイURLを貼り付けてください
-      const gasUrl = 'https://script.google.com/macros/s/AKfycbyb_ytrOgy8U2GMvzj0pfRN1d99zz7sfiW9Z7AduVJin0M0iim64UcbDdaQ4sk_IEb_jg/exec';
+      const gasUrl = 'https://script.google.com/macros/s/AKfycbx-eQBID_5EZcctG5cODtOUh2m6FYgGLY2jzC0ju29S7km_YWaypa2Tl2Gfrl4E5Zmh4Q/exec';
       const PASS_KEY = "4649"; 
 
       function genHrs(id, type) {
@@ -124,11 +124,12 @@
         subBtn.disabled = true;
 
         const allData = [];
-        let listHtml = '';
 
+        // 1. 各カードからデータを収集
         cards.forEach(card => {
           const id = card.id.replace('row_', '');
-          const d = document.getElementById(`day_${id}`).value + '日';
+          const dNum = parseInt(document.getElementById(`day_${id}`).value); // ソート用に数値化
+          const dStr = dNum + '日';
           const isHoliday = document.getElementById(`holiday_${id}`).checked;
           const c = document.getElementById(`cm_${id}`).value;
           
@@ -136,20 +137,32 @@
           if (isHoliday) {
             start = "休み";
             end = "休み";
-            listHtml += `<div class="confirm-item"><b>${d}</b>：<span style="color:red">休み希望</span><br><small>${c ? '備考: '+c : ''}</small></div>`;
           } else {
             start = document.getElementById(`start_h_${id}`).value + ':' + document.getElementById(`start_m_${id}`).value;
             end = document.getElementById(`end_h_${id}`).value + ':' + document.getElementById(`end_m_${id}`).value;
-            listHtml += `<div class="confirm-item"><b>${d}</b>： ${start} ～ ${end}<br><small>${c ? '備考: '+c : ''}</small></div>`;
           }
-          allData.push({ name: name, day: d, start: start, end: end, comment: c });
+          allData.push({ name: name, dayNum: dNum, dayStr: dStr, start: start, end: end, comment: c });
+        });
+
+        // 2. ★日付順（dayNum）にソート
+        allData.sort((a, b) => a.dayNum - b.dayNum);
+
+        // 3. 送信内容の確認リスト作成
+        let listHtml = '';
+        allData.forEach(item => {
+          const style = item.start === "休み" ? 'color:red' : '';
+          const timeText = item.start === "休み" ? '休み希望' : `${item.start} ～ ${item.end}`;
+          listHtml += `<div class="confirm-item"><b>${item.dayStr}</b>：<span style="${style}">${timeText}</span><br><small>${item.comment ? '備考: '+item.comment : ''}</small></div>`;
         });
 
         try {
           await fetch(gasUrl, { 
             method: 'POST', 
             mode: 'no-cors', 
-            body: JSON.stringify({ key: PASS_KEY, bulk: allData }) 
+            body: JSON.stringify({ 
+              key: PASS_KEY, 
+              bulk: allData.map(i => ({ name: i.name, day: i.dayStr, start: i.start, end: i.end, comment: i.comment })) 
+            }) 
           });
           
           document.getElementById('res-name').innerText = "氏名：" + name;
